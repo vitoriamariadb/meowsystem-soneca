@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Soneca
+Comment=Os modos Desperto e Ronronar: o PC fica acordado de tampa fechada ou dorme como o sistema manda
+Exec=@bindir@/meowsystem-soneca
+Terminal=false
+Type=Application
+StartupNotify=true
+Icon=io.github.meowsystem.Soneca-symbolic
+Categories=COSMIC;Utility;
+Keywords=COSMIC;Applet;Energia;Tampa;Suspender;Gato;
+NoDisplay=true
+X-CosmicApplet=true
+X-CosmicShrinkable=true
