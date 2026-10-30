@@ -4,6 +4,7 @@ mod estado;
 mod modelo;
 mod tema;
 mod trava;
+mod vigia;
 
 use std::path::Path;
 use std::rc::Rc;
@@ -28,9 +29,12 @@ const ARTE_DESPERTO: &[u8] = include_bytes!("../data/icones/soneca-desperto.svg"
 const ARTE_RONRONAR: &[u8] = include_bytes!("../data/icones/soneca-ronronar.svg");
 
 const ICONE_ROTULO: u16 = 16;
-const PASSO_LEITURA: Duration = Duration::from_secs(2);
+const PASSO_DESPERTO: Duration = Duration::from_secs(30);
 
 const SYS: &str = "/sys";
+
+const ERRO_TRAVA: &str = "O sistema recusou o Desperto";
+const ERRO_GRAVAR: &str = "O modo não foi gravado";
 
 fn arte_do_modo(m: Modo) -> &'static [u8] {
     match m {
@@ -73,6 +77,7 @@ enum Message {
     AbreFecha,
     PopupFechou(Id),
     Tique,
+    Mudou,
     Escolher(Modo),
     Travou(Result<Arc<Segurada>, String>),
     Avisou,
@@ -80,6 +85,10 @@ enum Message {
 }
 
 impl Applet {
+    fn mostrado(&self) -> Modo {
+        modelo::mostrado(self.modo, self.trava.is_some())
+    }
+
     fn sincronizar(&mut self) -> Task<Action<Message>> {
         match self.modo {
             Modo::Ronronar => {
@@ -106,7 +115,8 @@ impl Applet {
             if let Some(e) = &self.estado
                 && let Err(falha) = e.gravar(Modo::Ronronar)
             {
-                self.erro = Some(falha.to_string());
+                eprintln!("meowsystem-soneca: {}: {falha}", e.arquivo().display());
+                self.erro = Some(ERRO_GRAVAR.into());
             }
             tarefas.push(cosmic::task::future(async {
                 let _ = aviso::avisar("Soneca", &aviso::texto_da_bateria()).await;
@@ -119,8 +129,9 @@ impl Applet {
 
     fn bloco_modos(&self) -> Element<'_, Message> {
         let mut col = Column::new();
+        let mostrado = self.mostrado();
         for m in Modo::TODOS {
-            let marcado = self.modo == m;
+            let marcado = mostrado == m;
             let arte = icon::icon(icon::from_svg_bytes(arte_do_modo(m)).symbolic(true)).size(ICONE_ROTULO);
             let nome = text::body(m.nome()).width(Length::Fill);
             let mut linha = Row::new().spacing(8).align_y(Alignment::Center);
@@ -137,7 +148,9 @@ impl Applet {
             } else {
                 linha = linha.push(arte).push(nome);
             }
-            col = col.push(menu_button(linha).on_press_maybe((!marcado).then_some(Message::Escolher(m))));
+            col = col.push(menu_button(linha).on_press_maybe(
+                modelo::clicavel(m, self.modo, self.trava.is_some()).then_some(Message::Escolher(m)),
+            ));
         }
         col.into()
     }
@@ -188,17 +201,18 @@ impl cosmic::Application for Applet {
                     self.popup = None;
                 }
             }
-            Message::Tique => return self.conferir(),
+            Message::Tique | Message::Mudou => return self.conferir(),
             Message::Escolher(m) => {
                 if let Some(e) = &self.estado
                     && let Err(falha) = e.gravar(m)
                 {
-                    self.erro = Some(falha.to_string());
+                    eprintln!("meowsystem-soneca: {}: {falha}", e.arquivo().display());
+                    self.erro = Some(ERRO_GRAVAR.into());
                     return Task::none();
                 }
                 self.erro = None;
                 self.modo = m;
-                return self.sincronizar();
+                return self.conferir();
             }
             Message::Travou(r) => {
                 self.travando = false;
@@ -208,7 +222,12 @@ impl cosmic::Application for Applet {
                         self.erro = None;
                     }
                     Ok(_) => {}
-                    Err(e) => self.erro = Some(e),
+                    Err(e) => {
+                        eprintln!("meowsystem-soneca: o logind recusou a trava: {e}");
+                        if self.modo == Modo::Desperto {
+                            self.erro = Some(ERRO_TRAVA.into());
+                        }
+                    }
                 }
             }
             Message::Avisou => {}
@@ -218,18 +237,26 @@ impl cosmic::Application for Applet {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        cosmic::iced::time::every(PASSO_LEITURA).map(|_| Message::Tique)
+        let mudancas = match &self.estado {
+            Some(e) => vigia::mudancas(e.arquivo().to_path_buf()).map(|()| Message::Mudou),
+            None => Subscription::none(),
+        };
+        let tique = match self.modo {
+            Modo::Desperto => cosmic::iced::time::every(PASSO_DESPERTO).map(|_| Message::Tique),
+            Modo::Ronronar => Subscription::none(),
+        };
+        Subscription::batch([mudancas, tique])
     }
 
     fn view(&self) -> Element<'_, Message> {
         let botao = self
             .core
             .applet
-            .icon_button_from_handle(icon::from_svg_bytes(arte_do_modo(self.modo)).symbolic(true))
+            .icon_button_from_handle(icon::from_svg_bytes(arte_do_modo(self.mostrado())).symbolic(true))
             .on_press_down(Message::AbreFecha);
         self.core
             .applet
-            .applet_tooltip(botao, self.modo.nome(), self.popup.is_some(), Message::Surface, None)
+            .applet_tooltip(botao, self.mostrado().nome(), self.popup.is_some(), Message::Surface, None)
             .into()
     }
 

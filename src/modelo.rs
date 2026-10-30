@@ -29,6 +29,14 @@ impl Modo {
     }
 }
 
+pub fn mostrado(escolhido: Modo, segurando: bool) -> Modo {
+    if escolhido == Modo::Desperto && segurando { Modo::Desperto } else { Modo::Ronronar }
+}
+
+pub fn clicavel(opcao: Modo, escolhido: Modo, segurando: bool) -> bool {
+    opcao != escolhido || opcao != mostrado(escolhido, segurando)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Bateria {
     pub percentual: u8,
@@ -73,6 +81,24 @@ mod testes {
     #[test]
     fn o_padrao_deixa_o_pc_dormir_como_o_sistema_manda() {
         assert_eq!(Modo::PADRAO, Modo::Ronronar);
+    }
+
+    #[test]
+    fn so_mostra_desperto_com_a_trava_na_mao() {
+        assert_eq!(mostrado(Modo::Desperto, true), Modo::Desperto);
+        assert_eq!(mostrado(Modo::Desperto, false), Modo::Ronronar);
+        assert_eq!(mostrado(Modo::Ronronar, false), Modo::Ronronar);
+        assert_eq!(mostrado(Modo::Ronronar, true), Modo::Ronronar);
+    }
+
+    #[test]
+    fn com_o_desperto_recusado_os_dois_ficam_clicaveis() {
+        assert!(clicavel(Modo::Desperto, Modo::Desperto, false));
+        assert!(clicavel(Modo::Ronronar, Modo::Desperto, false));
+        assert!(!clicavel(Modo::Desperto, Modo::Desperto, true));
+        assert!(clicavel(Modo::Ronronar, Modo::Desperto, true));
+        assert!(!clicavel(Modo::Ronronar, Modo::Ronronar, false));
+        assert!(clicavel(Modo::Desperto, Modo::Ronronar, false));
     }
 
     #[test]

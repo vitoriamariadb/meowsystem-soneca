@@ -3015,6 +3015,7 @@ name = "meowsystem-soneca"
 version = "0.1.0"
 dependencies = [
  "libcosmic",
+ "notify",
  "serde_json",
  "tokio",
  "zbus",

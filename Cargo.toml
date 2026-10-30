@@ -12,6 +12,7 @@ name = "meowsystem-soneca"
 path = "src/main.rs"
 
 [dependencies]
+notify = { version = "8.2", default-features = false }
 serde_json = "1"
 tokio = { version = "1.53", default-features = false, features = ["rt", "sync"] }
 zbus = { version = "5.19", default-features = false, features = ["tokio"] }
