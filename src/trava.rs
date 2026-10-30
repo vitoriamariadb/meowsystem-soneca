@@ -13,6 +13,13 @@ pub struct Segurada {
     _fd: zbus::zvariant::OwnedFd,
 }
 
+#[cfg(test)]
+impl Segurada {
+    fn bruto(&self) -> std::os::fd::RawFd {
+        std::os::fd::AsRawFd::as_raw_fd(&self._fd)
+    }
+}
+
 pub trait Logind: Clone + Send + Sync + 'static {
     fn inibir(&self) -> impl Future<Output = Resultado<Segurada>> + Send;
 }
@@ -167,6 +174,48 @@ mod testes {
             assert!(!solta(&pontas[1]));
             drop(segunda);
             assert!(solta(&pontas[1]));
+        });
+    }
+
+    fn fecha_no_exec(fd: std::os::fd::RawFd) -> bool {
+        let info = std::fs::read_to_string(format!("/proc/self/fdinfo/{fd}")).unwrap();
+        let flags = info
+            .lines()
+            .find_map(|l| l.strip_prefix("flags:"))
+            .map(|v| u32::from_str_radix(v.trim(), 8).unwrap())
+            .unwrap();
+        flags & 0o2000000 != 0
+    }
+
+    #[test]
+    fn o_descritor_da_trava_nao_vaza_para_processo_filho() {
+        rodar(async {
+            let b = banca(false).await;
+            let trava = segurar(&b.sistema).await.unwrap();
+            assert!(fecha_no_exec(trava.bruto()), "o descritor da trava não tem FD_CLOEXEC");
+            let ponta = b.pontas.lock().unwrap().remove(0);
+            let mut filho = std::process::Command::new("sleep").arg("5").spawn().unwrap();
+            drop(trava);
+            let solto = solta(&ponta);
+            let _ = filho.kill();
+            let _ = filho.wait();
+            assert!(solto, "um processo filho herdou a trava e a segurou depois do applet largar");
+        });
+    }
+
+    #[test]
+    fn a_trava_sobrevive_a_queda_da_conexao_com_o_barramento() {
+        rodar(async {
+            let b = banca(false).await;
+            let trava = segurar(&b.sistema).await.unwrap();
+            let ponta = b.pontas.lock().unwrap().remove(0);
+            let Banca { sistema, _servidor, .. } = b;
+            drop(sistema);
+            drop(_servidor);
+            tokio::task::yield_now().await;
+            assert!(!solta(&ponta), "a trava caiu junto com a conexão ao D-Bus");
+            drop(trava);
+            assert!(solta(&ponta));
         });
     }
 
