@@ -23,7 +23,8 @@ cargo build --release --locked      # target/release/meowsystem-soneca
 cargo test --release --locked
 ```
 
-O `Cargo.lock` é o do meowsystem-performance mais este pacote. O único acréscimo é a aresta
+O `Cargo.lock` é o do meowsystem-performance mais este pacote, sem crate nova. Os acréscimos são
+duas arestas: `notify` (o vigia do arquivo do modo, a mesma versão que o `cosmic-config` já usa) e
 `zbus` para `getrandom 0.4.3`, que vem do recurso `p2p` e só entra nos testes (o logind falso
 conversa por um par de sockets, sem barramento).
 
@@ -36,8 +37,13 @@ conversa por um par de sockets, sem barramento).
 | `org.freedesktop.Notifications` (D-Bus da sessão) | nada | uma notificação quando a bateria força o Ronronar |
 | `~/.local/state/cosmic/io.github.meowsystem.Soneca/v1/modo` | o modo | o modo, por clique, pela linha de comando e na troca por bateria |
 
-O arquivo do modo tem uma linha, `desperto` ou `ronronar`. O applet relê a cada 2 s, e é assim
-que `--desperto` e `--ronronar` valem com o applet no ar.
+O arquivo do modo tem uma linha, `desperto` ou `ronronar`. O applet vigia a pasta dele com
+inotify, e é assim que `--desperto` e `--ronronar` valem na hora com o applet no ar. No Ronronar
+nada acorda o applet; no Desperto ele confere a bateria a cada 30 s e, se o `logind` recusou a
+trava, pede de novo.
+
+O ícone e o marcado do popup mostram Desperto só com a trava na mão: se o `logind` recusa, o
+painel mostra Ronronar e o popup diz que o sistema recusou.
 
 ## Quem continua fazendo o quê
 

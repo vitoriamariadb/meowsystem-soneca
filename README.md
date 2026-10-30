@@ -17,12 +17,13 @@ libcosmic pinado, a mesma estrutura e o mesmo tema.
   Passar o mouse mostra o nome do modo.
 - No popup: os dois modos; o marcado usa o acento do pack. Um clique troca na hora.
 - O modo escolhido fica guardado e volta no login seguinte. Sem escolha nenhuma, vale o Ronronar.
+- O gato acordado aparece só com a trava de pé: se o sistema recusa, a barra mostra o Ronronar.
 - No Desperto, na bateria e abaixo de 10% sem carregar, o applet solta a trava, volta para o
   Ronronar e avisa numa notificação curta.
 
 ```bash
 meowsystem-soneca --estado     # imprime desperto ou ronronar e sai
-meowsystem-soneca --desperto   # grava o modo; o applet no ar acompanha em até 2 s
+meowsystem-soneca --desperto   # grava o modo; o applet no ar acompanha na hora
 meowsystem-soneca --ronronar
 ```
 
