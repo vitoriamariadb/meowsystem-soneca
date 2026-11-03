@@ -11,6 +11,8 @@ Faz parte do [MeowSystem](https://github.com/vitoriamariadb/MeowSystem) e usa a 
 [meowsystem-performance](https://github.com/vitoriamariadb/meowsystem-performance): o mesmo
 libcosmic pinado, a mesma estrutura e o mesmo tema.
 
+<p align="center"><img src="docs/captura.png" alt="O popup do Soneca: Desperto e Ronronar"></p>
+
 ## O que ele faz
 
 - Na barra: o gato de olhos abertos (Desperto) ou o gato enrolado de olhos fechados (Ronronar).
